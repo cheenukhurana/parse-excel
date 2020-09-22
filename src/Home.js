@@ -2,21 +2,41 @@ import React, { useEffect, useState } from 'react'
 import "./Home.css"
 import * as XLSX from 'xlsx';
 import excelFile from './parse_test_sheet.xlsx'
+import RemarkModal from './RemarkModal';
 
-function DataCell(props)
+function approveOrRejectObject(heading,row,action)
 {
-    return (
-        <>
-            <td>{props.cellValue}</td>
-        </>
-    );
+    let obj = {};
+    
+    for(let i=0;i<heading[0].length;i++)
+    {
+        let headingKey = heading[0][i];
+        obj[headingKey] = row.children[i+1].innerHTML;
+    }
+    obj.action = action;
+    return obj;
 }
 
+function approveAll(heading)
+{
+    let allCheckBoxes = document.getElementsByClassName("row-select");
+    let allApprovedObjects = []
+    for(let i=0;i<allCheckBoxes.length;i++)
+    {
+        if(allCheckBoxes[i].checked === true)
+        {
+            let approvedObject = approveOrRejectObject(heading,allCheckBoxes[i].parentElement.parentElement,"Approve");
+            allApprovedObjects.push(approvedObject);
+        }
+    }
+    console.log(allApprovedObjects);
+}
 
+// This will populate each row in the table
 function DataRow(props)
 {
 
-    const [checkedBoxesCount,setCheckedBoxesCount] = useState(0);
+    const [checkedBoxesCount,setCheckedBoxesCount] = useState(0);  // If no boxes are checked, Approve Selected will be disabled
 
     useEffect(()=>{
         if(checkedBoxesCount)
@@ -29,50 +49,16 @@ function DataRow(props)
         }
     },[checkedBoxesCount])
 
-    function approveOrRejectObject(row,action)
-    {
-        let obj = new Object();
-        
-        for(let i=0;i<props.heading[0].length;i++)
-        {
-            let headingKey = props.heading[0][i];
-            obj[headingKey] = row.children[i+1].innerHTML;
-        }
-        obj.action = action;
-        return obj
-    }
-
     function handleApprove(e)
     {
-        let allCheckBoxes = document.getElementsByClassName("row-select");
-        let allApprovedObjects = []
-        for(let i=0;i<allCheckBoxes.length;i++)
-        {
-            if(allCheckBoxes[i].checked == true)
-            {
-                let approvedObject = approveOrRejectObject(allCheckBoxes[i].parentElement.parentElement,e.target.innerHTML);
-                allApprovedObjects.push(approvedObject);
-            }
-        }
-        console.log(allApprovedObjects);
+        let approvedObject = approveOrRejectObject(props.heading,e.target.parentElement.parentElement,e.target.innerHTML);
+        console.log(approvedObject);
     }
-
-    // function handleApproveAll(e)
-    // {
-    //     let allCheckedBoxes = document.getElementsByClassName("row-select");
-    //     let allApprovedObjects = []
-    //     for(let i=0;i<allCheckedBoxes.length;i++)
-    //     {
-    //         let approvedObject = approveOrRejectObject(allCheckedBoxes[i].parentElement.parentElement,e.target.innerHTML);
-    //         allApprovedObjects.push(approvedObject);
-    //     }
-    //     console.log(allApprovedObjects);
-    // }
 
     function handleReject(e)
     {
-
-        // let obj = approveOrRejectObject(e.target.parentElement.parentElement,e.target.innerHTML);
+        let rejectedObject = approveOrRejectObject(props.heading,e.target.parentElement.parentElement,e.target.innerHTML);
+        props.showEnterRemark(rejectedObject);
     }
 
     function handleChecked(e)
@@ -92,16 +78,16 @@ function DataRow(props)
             {(props.index===0)?(
                 <>
                     <tr>
-                        <td>Select</td>
-                        {props.rowArray.map(cellValue=><DataCell cellValue={cellValue}/>)}
-                        <td>Action</td>
+                        <th>Select</th>
+                        {props.rowArray.map((cellValue,index)=><th key={index}>{cellValue}</th>)}
+                        <th>Action</th>
                     </tr>
                 </>
             ):(
                 <>
                     <tr>
                         <td><input type="checkbox" className = "row-select" onChange={handleChecked}/></td>
-                        {props.rowArray.map(cellValue=><DataCell cellValue={cellValue}/>)}
+                        {props.rowArray.map((cellValue,index)=><td key={index}>{cellValue}</td>)}
                         <td><button onClick={handleApprove}>Approve </button>  <button onClick={handleReject}>Reject</button></td>
                     </tr>
                 </>
@@ -113,9 +99,12 @@ function DataRow(props)
 function Home()
 {
 
-    const [excelDataHeading,setExcelDataHeading] = useState([]);
+    const [excelDataHeading,setExcelDataHeading] = useState([]);   
     const [excelData,setExcelData] = useState([]);
+    const [enterRemark,setEnterRemark] = useState(false);           // If this is true, show a view to enter remark
+    const [rejectedObject,setRejectedObject] = useState("");        
 
+    // Used to parse excel data on initial mount
     useEffect(()=>{
         fetch(excelFile)
         .then(res=>res.blob())
@@ -134,22 +123,41 @@ function Home()
         })
     },[]);
 
+    // Will be called when click on Reject
+    function showEnterRemark(rejectedObject)
+    {
+        setRejectedObject(rejectedObject);
+        setEnterRemark(true);
+    }
+
+    // Will be called when we enter Remark
+    function handleFinalReject(buttonClicked,remark)
+    {
+        if(buttonClicked==="Reject")
+        {
+            const obj = rejectedObject;
+            obj.remark = remark;
+            setRejectedObject(obj);
+            console.log(rejectedObject);   
+        }
+        setEnterRemark(false);
+    }
 
     function handleApproveAll()
     {
-        
+        approveAll(excelDataHeading);
     }
-
-
-    let data1 = [[8888888888,1,1000],[9999999999,2,500]];
 
     return (
         <div>
             <table>
-                {excelData.map((rowArray,index)=><DataRow rowArray={rowArray} index={index} heading={excelDataHeading} />)}
+                <tbody>
+                    {excelData.map((rowArray,index)=><DataRow rowArray={rowArray} index={index} heading={excelDataHeading} showEnterRemark={showEnterRemark} key={index}/>)}
+                </tbody>
             </table>
             <br/>
-            <button id="approve-multiple-button" disabled={true} onClick={handleApproveAll}>Approve</button>
+            <button id="approve-multiple-button" onClick={handleApproveAll}>Approve Selected</button>
+            {(enterRemark) && <RemarkModal id={rejectedObject.earning_id} handleFinalReject={handleFinalReject}/> }
         </div>
     );
 }
