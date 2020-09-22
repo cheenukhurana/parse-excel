@@ -8,3 +8,6 @@ mobile    earning_id	earning,
 Accept or Reject each row.
 Can Select Multiply rows and then accept.
 Can Enter Remark before Rejecting.
+
+
+Use npm start to run
