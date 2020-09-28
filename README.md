@@ -10,4 +10,8 @@ Can Select Multiply rows and then accept.
 Can Enter Remark before Rejecting.
 
 
-Use npm start to run
+How to run
+ - Open Terminal
+ - change directory to the folder where code is present
+ - npm start
+ - Visit localhost:3000
