@@ -13,5 +13,6 @@ Can Enter Remark before Rejecting.
 How to run
  - Open Terminal
  - change directory to the folder where code is present
+ - npm install
  - npm start
  - Visit localhost:3000
